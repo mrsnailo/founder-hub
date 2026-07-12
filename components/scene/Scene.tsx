@@ -88,7 +88,17 @@ interface SceneProps {
 export function Scene({ sections }: SceneProps) {
   const [reduceMotion, setReduceMotion] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [webglFailed, setWebglFailed] = useState(false);
+  const [webglFailed] = useState(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      const canvas = document.createElement("canvas");
+      const gl =
+        canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+      return !gl;
+    } catch {
+      return true;
+    }
+  });
 
   useEffect(() => {
     const mql = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -125,9 +135,6 @@ export function Scene({ sections }: SceneProps) {
         gl={{ antialias: !isMobile, powerPreference: "default" }}
         dpr={isMobile ? [1, 1.5] : [1, 2]}
         camera={{ position: [0, 0, 7], fov: 50 }}
-        onCreated={({ gl }) => {
-          if (!gl.getContext()) setWebglFailed(true);
-        }}
       >
         <ScrollControls pages={sections} damping={reduceMotion ? 0 : 0.3}>
           <SceneInner

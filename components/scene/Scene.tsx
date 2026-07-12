@@ -35,15 +35,16 @@ function SceneInner({ reduceMotion, isMobile, sections }: SceneInnerProps) {
   const cameraRef = useRef<THREE.PerspectiveCamera>(null);
   const tmpPos = useRef(new THREE.Vector3());
   const currentPos = useRef(new THREE.Vector3(0, 0, 7));
+  const currentSectionRef = useRef(0);
 
   useFrame(({ camera }) => {
-    // Scroll offset 0..1 across all sections
     const offset = scroll.offset;
-    // Map to section index (0..sections-1)
     const sectionFloat = offset * (sections - 1);
     const sectionA = Math.floor(sectionFloat);
     const sectionB = Math.min(sectionA + 1, sections - 1);
     const t = sectionFloat - sectionA;
+
+    currentSectionRef.current = Math.round(sectionFloat);
 
     const posA = SECTION_POSITIONS[sectionA] ?? SECTION_POSITIONS[SECTION_POSITIONS.length - 1];
     const posB = SECTION_POSITIONS[sectionB] ?? SECTION_POSITIONS[SECTION_POSITIONS.length - 1];
@@ -65,17 +66,17 @@ function SceneInner({ reduceMotion, isMobile, sections }: SceneInnerProps) {
 
       {/* Subly Store — section 1 */}
       <group position={OBJECT_POSITIONS[0]}>
-        <SublyObject reduceMotion={reduceMotion} isMobile={isMobile} />
+        <SublyObject reduceMotion={reduceMotion} isMobile={isMobile} activeSection={currentSectionRef} sectionIndex={1} />
       </group>
 
       {/* Inventory Pro — section 2 */}
       <group position={OBJECT_POSITIONS[1]}>
-        <InventoryObject reduceMotion={reduceMotion} isMobile={isMobile} />
+        <InventoryObject reduceMotion={reduceMotion} isMobile={isMobile} activeSection={currentSectionRef} sectionIndex={2} />
       </group>
 
       {/* ClawMate — section 3 */}
       <group position={OBJECT_POSITIONS[2]}>
-        <ClawMateObject reduceMotion={reduceMotion} isMobile={isMobile} />
+        <ClawMateObject reduceMotion={reduceMotion} isMobile={isMobile} activeSection={currentSectionRef} sectionIndex={3} />
       </group>
     </>
   );

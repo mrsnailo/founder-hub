@@ -7,9 +7,10 @@ import * as THREE from "three";
 interface ClawMateObjectProps {
   reduceMotion?: boolean;
   isMobile?: boolean;
+  activeSection: React.RefObject<number>;
+  sectionIndex: number;
 }
 
-// Build a gear-like shape using ExtrudeGeometry
 function createGearShape(teeth: number, innerR: number, outerR: number): THREE.Shape {
   const shape = new THREE.Shape();
   const toothDepth = outerR - innerR;
@@ -22,7 +23,6 @@ function createGearShape(teeth: number, innerR: number, outerR: number): THREE.S
     const nextAngle = ((i + 1) / teeth) * Math.PI * 2;
     const midAngle = angle + toothWidth * 0.5;
 
-    // Tooth top arc
     shape.lineTo(
       Math.cos(angle + toothWidth * 0.2) * outerR,
       Math.sin(angle + toothWidth * 0.2) * outerR
@@ -46,7 +46,6 @@ function createGearShape(teeth: number, innerR: number, outerR: number): THREE.S
   }
   shape.closePath();
 
-  // Punch a hole in the center
   const hole = new THREE.Path();
   hole.absarc(0, 0, innerR * 0.4, 0, Math.PI * 2, true);
   shape.holes.push(hole);
@@ -57,9 +56,12 @@ function createGearShape(teeth: number, innerR: number, outerR: number): THREE.S
 export function ClawMateObject({
   reduceMotion = false,
   isMobile = false,
+  activeSection,
+  sectionIndex,
 }: ClawMateObjectProps) {
   const groupRef = useRef<THREE.Group>(null);
   const innerGearRef = useRef<THREE.Mesh>(null);
+  const opacityRef = useRef(0);
 
   const teeth = isMobile ? 8 : 12;
   const outerGearShape = createGearShape(teeth, 0.55, 0.75);
@@ -68,13 +70,38 @@ export function ClawMateObject({
   const extrudeSettings = { depth: 0.25, bevelEnabled: true, bevelSize: 0.02, bevelThickness: 0.02 };
 
   useFrame((_, delta) => {
-    if (reduceMotion) return;
+    if (!groupRef.current) return;
+
+    const isActive = activeSection.current === sectionIndex;
+    const target = isActive ? 1 : 0;
+
+    if (reduceMotion) {
+      opacityRef.current = target;
+      groupRef.current.visible = isActive;
+    } else {
+      opacityRef.current += (target - opacityRef.current) * Math.min(delta * 8, 1);
+      groupRef.current.visible = opacityRef.current > 0.01;
+    }
+
+    groupRef.current.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        const mat = child.material as THREE.MeshStandardMaterial;
+        if (mat.transparent !== undefined) {
+          mat.transparent = true;
+          mat.opacity = opacityRef.current;
+          mat.needsUpdate = true;
+        }
+      }
+    });
+
+    if (reduceMotion || !isActive) return;
+
     if (groupRef.current) {
       groupRef.current.rotation.z += delta * 0.05;
       groupRef.current.rotation.y = Math.sin(Date.now() * 0.0003) * 0.3;
     }
     if (innerGearRef.current) {
-      innerGearRef.current.rotation.z -= delta * 0.12; // counter-rotate
+      innerGearRef.current.rotation.z -= delta * 0.12;
     }
   });
 
@@ -89,6 +116,8 @@ export function ClawMateObject({
           roughness={0.2}
           emissive="#3a3f48"
           emissiveIntensity={0.1}
+          transparent
+          opacity={0}
         />
       </mesh>
       {/* Inner counter-rotating gear */}
@@ -100,12 +129,20 @@ export function ClawMateObject({
           roughness={0.15}
           emissive="#7a5b28"
           emissiveIntensity={0.2}
+          transparent
+          opacity={0}
         />
       </mesh>
       {/* Center axle */}
       <mesh position={[0, 0, -0.1]}>
         <cylinderGeometry args={[0.08, 0.08, 0.6, 16]} />
-        <meshStandardMaterial color="#4c7a79" metalness={0.9} roughness={0.1} />
+        <meshStandardMaterial
+          color="#4c7a79"
+          metalness={0.9}
+          roughness={0.1}
+          transparent
+          opacity={0}
+        />
       </mesh>
     </group>
   );

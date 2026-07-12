@@ -7,18 +7,46 @@ import * as THREE from "three";
 interface InventoryObjectProps {
   reduceMotion?: boolean;
   isMobile?: boolean;
+  activeSection: React.RefObject<number>;
+  sectionIndex: number;
 }
 
 export function InventoryObject({
   reduceMotion = false,
   isMobile = false,
+  activeSection,
+  sectionIndex,
 }: InventoryObjectProps) {
   const groupRef = useRef<THREE.Group>(null);
-  // Lattice: outer wireframe cage + inner solid box
+  const opacityRef = useRef(0);
   const segments = isMobile ? 2 : 3;
 
   useFrame((_, delta) => {
-    if (reduceMotion || !groupRef.current) return;
+    if (!groupRef.current) return;
+
+    const isActive = activeSection.current === sectionIndex;
+    const target = isActive ? 1 : 0;
+
+    if (reduceMotion) {
+      opacityRef.current = target;
+      groupRef.current.visible = isActive;
+    } else {
+      opacityRef.current += (target - opacityRef.current) * Math.min(delta * 8, 1);
+      groupRef.current.visible = opacityRef.current > 0.01;
+    }
+
+    groupRef.current.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        const mat = child.material as THREE.MeshStandardMaterial;
+        if (mat.transparent !== undefined) {
+          mat.transparent = true;
+          mat.opacity = opacityRef.current;
+          mat.needsUpdate = true;
+        }
+      }
+    });
+
+    if (reduceMotion || !isActive) return;
     groupRef.current.rotation.y += delta * 0.04;
     groupRef.current.rotation.x += delta * 0.02;
   });
@@ -34,6 +62,8 @@ export function InventoryObject({
           roughness={0.4}
           emissive="#2a4a49"
           emissiveIntensity={0.2}
+          transparent
+          opacity={0}
         />
       </mesh>
       {/* Wireframe cage */}
@@ -43,7 +73,7 @@ export function InventoryObject({
           color="#c79a56"
           wireframe={true}
           transparent
-          opacity={0.45}
+          opacity={0}
         />
       </mesh>
       {/* Corner vertices as small spheres */}
@@ -63,6 +93,8 @@ export function InventoryObject({
             color="#c79a56"
             emissive="#c79a56"
             emissiveIntensity={0.5}
+            transparent
+            opacity={0}
           />
         </mesh>
       ))}

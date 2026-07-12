@@ -46,6 +46,8 @@ export default function RootLayout({
           href="https://fonts.gstatic.com"
           crossOrigin="anonymous"
         />
+        {/* Preconnect for Fontshare (General Sans) */}
+        <link rel="preconnect" href="https://api.fontshare.com" />
       </head>
       <body>{children}</body>
     </html>
